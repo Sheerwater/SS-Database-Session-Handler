@@ -14,6 +14,11 @@ class DatabaseSessionHandler
         );
     }
 
+    function __destruct() {
+        // objects can't be used on shutdown, so we write the session a little early
+        session_write_close();
+    }
+
     function session_open($sessionPath, $sessionName)
     {
         return true;
@@ -63,7 +68,8 @@ class DatabaseSessionHandler
 
     function session_destroy($sessionId)
     {
-        DatabaseSessionStore::get()->removeByFilter('SessionId', $sessionId);
+        $dbSessionId = Convert::raw2sql($sessionId);
+        DatabaseSessionStore::get()->removeByFilter("\"SessionId\" = '$dbSessionId'");
 
         return true;
     }
@@ -71,9 +77,9 @@ class DatabaseSessionHandler
     function session_gc($sessionMaxLife)
     {
         $sessionMaxLife = (int)$sessionMaxLife;
-        DatabaseSessionStore::get()->removeByFilter(
+        DatabaseSessionStore::get()->filter(
             'LastEdited:LessThan', SS_Datetime::create()->setValue("-$sessionMaxLife seconds"
-        ));
+        ))->removeAll();
 
         return true;
     }
